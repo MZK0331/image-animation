@@ -33,4 +33,12 @@ export class ImageMeshAnimator {
             index++
         })
     }
+
+    public update = () => {
+        this.meshController.update()
+    }
+    
+    public onResize = () => {
+        this.meshController.onResize()
+    }
 }

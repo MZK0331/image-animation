@@ -1,8 +1,9 @@
 import * as THREE from 'three/webgpu'
 import gsap from 'gsap'
-import { add, Fn, mix, texture, uniform, uv, vec2, vec4 } from 'three/tsl'
+import { Fn, mix, texture, uniform, uv, vec4 } from 'three/tsl'
 
 import { spSize } from '../../events/size-change'
+import { Common } from '../core/common'
 
 
 interface ImageMeshInitProps {
@@ -10,28 +11,27 @@ interface ImageMeshInitProps {
     height: number,
     uFilterTexture: THREE.Texture,
     uTexture: THREE.Texture,
+    pcScale: number,
     pcStartPos: THREE.Vector3,
     pcEndPos: THREE.Vector3,
+    spScale: number,
     spStartPos: THREE.Vector3,
     spEndPos: THREE.Vector3,
     animationTime: number,
     fadeInOpacityTimeSpent: number,
     fadeOutOpacityTimeSpent: number,
+    imageTransitionStartTime: number,
+    imageTransitionDuration: number,
     delay: number
 }
 
 export class ImageMesh extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
-    private pcStartPos: THREE.Vector3
-    private pcEndPos: THREE.Vector3
-    private spStartPos: THREE.Vector3
-    private spEndPos: THREE.Vector3
-    private animationTime: number
-    private fadeInOpacityTimeSpent: number
-    private fadeOutOpacityTimeSpent: number
-    private delay: number
+    private common: Common
+    private props: ImageMeshInitProps
+
 
     private timeline = gsap.timeline()
-    private animationProgress: number = 0
+    private positionProgress: number = 0
     private uniforms = {
         uFilterTexture: new THREE.Texture(),
         uTexture: new THREE.Texture(),
@@ -40,20 +40,14 @@ export class ImageMesh extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMa
         uOpacity: uniform(1)
     }
 
-    constructor(props: ImageMeshInitProps) {
+    constructor(common: Common, props: ImageMeshInitProps) {
         const geometry = new THREE.PlaneGeometry(props.width, props.height)
         const material = new THREE.MeshBasicMaterial()
         
         super(geometry, material)
-
-        this.pcStartPos = props.pcStartPos
-        this.pcEndPos = props.pcEndPos
-        this.spStartPos = props.spStartPos
-        this.spEndPos = props.spEndPos
-        this.animationTime = props.animationTime
-        this.fadeInOpacityTimeSpent = props.fadeInOpacityTimeSpent
-        this.fadeOutOpacityTimeSpent = props.fadeOutOpacityTimeSpent
-        this.delay = props.delay
+        
+        this.common = common
+        this.props = props
 
         this.uniforms.uFilterTexture = props.uFilterTexture
         this.uniforms.uTexture = props.uTexture
@@ -65,28 +59,55 @@ export class ImageMesh extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMa
             
             const mixt = mix(ft, t, this.uniforms.uMixProgress).rgb
 
-            // const color = gaussianBlur()
-
             return vec4(mixt, this.uniforms.uOpacity)
         })()
+    }
+    
+    public updatePosition = () => {
+        const isSp = window.innerWidth < spSize
+        const startPos = isSp ? this.props.spStartPos : this.props.pcStartPos
+        const endPos = isSp ? this.props.spEndPos : this.props.pcEndPos
+        const { viewWidth, viewHeight } = this.common
+
+        const x = THREE.MathUtils.lerp(
+            startPos.x,
+            endPos.x,
+            this.positionProgress
+        ) * viewWidth
+
+        const y = THREE.MathUtils.lerp(
+            startPos.y,
+            endPos.y,
+            this.positionProgress
+        ) * viewHeight
+
+        const z = THREE.MathUtils.lerp(
+            startPos.z,
+            endPos.z,
+            this.positionProgress
+        ) * ((viewWidth + viewHeight) * 0.5)
+
+        this.position.set(x, y, z)
+    }
+
+    public updateSize = () => {
+        const isSp = window.innerWidth < spSize
+        const scale = isSp ? this.props.spScale : this.props.pcScale
+
+        const width = this.common.viewWidth * scale
+        const scaleValue = width / this.geometry.parameters.width
+        this.scale.set(scaleValue, scaleValue, 1)
     }
     
     public startLoopAnimation = () => {
         this.timeline.kill()
 
-        const isSp = window.innerWidth < spSize
-        const startPos = isSp ? this.spStartPos : this.pcStartPos
-        const endPos = isSp ? this.spEndPos : this.pcEndPos
 
-        this.position.copy(startPos)
         this.uniforms.uOpacity.value = 0
 
         this.timeline = gsap.timeline({
             repeat: -1,
-            repeatDelay: this.delay,
-            onRepeat: () => {
-                this.position.copy(startPos)
-            }
+            repeatDelay: this.props.delay,
         })
 
         this.timeline
@@ -94,58 +115,30 @@ export class ImageMesh extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMa
             // フェードイン
             .to(this.uniforms.uOpacity, {
                 value: 1,
-                duration: this.fadeInOpacityTimeSpent,
-                ease: "power2.out"
-            }, 0)
-            // 位置移動
-            .to(this.position, {
-                x: endPos.x,
-                y: endPos.y,
-                z: endPos.z,
-                duration: this.animationTime,
-                ease: "power1.inOut" 
+                duration: this.props.fadeInOpacityTimeSpent,
+                ease: "ease"
             }, 0)
             // アニメーション進行度
             .to(this, {
-                animationProgress: 1,
-                duration: this.animationTime,
-                ease: "power1.inOut"
+                positionProgress: 1,
+                duration: this.props.animationTime,
+                ease: "power2.out"
             }, 0)
-            // step 2 ===================
+
+            // step 2 画像切り替え ===================
+            .to(this.uniforms.uMixProgress, {
+                value: 1,
+                duration: this.props.imageTransitionDuration,
+                ease: "power2.in"
+            }, this.props.imageTransitionStartTime)
+
+            // step 3 ===================
             // フェードアウト
             .to(this.uniforms.uOpacity, {
                 value: 0,
-                duration: this.fadeOutOpacityTimeSpent,
+                duration: this.props.fadeOutOpacityTimeSpent,
                 ease: "power2.in"
-            }, this.animationTime - this.fadeOutOpacityTimeSpent)
+            }, this.props.animationTime - this.props.fadeOutOpacityTimeSpent)
 
     }
 }
-
-
-
-// const gaussianBlur = (
-//     tex: THREE.Texture,
-//     blurStrength: THREE.TSL.ShaderNodeObject<THREE.UniformNode<number>> // 0.0 ~ 1.0
-// ) => {
-
-//     const texel = blurStrength.mul(0.002)
-
-//     let color = texture(tex, uv()).mul(0.227027)
-
-//     color = add(color,
-//         texture(tex, uv().add(vec2(texel, 0))).mul(0.316216)
-//     )
-//     color = add(color,
-//         texture(tex, uv().sub(vec2(texel, 0))).mul(0.316216)
-//     )
-
-//     color = add(color,
-//         texture(tex, uv().add(vec2(0, texel))).mul(0.070270)
-//     )
-//     color = add(color,
-//         texture(tex, uv().sub(vec2(0, texel))).mul(0.070270)
-//     )
-
-//     return color
-// }
