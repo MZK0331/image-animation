@@ -49,10 +49,9 @@ export class ImageMeshController {
                 pcEndPos: new THREE.Vector3(obj.pcEndPos.x, obj.pcEndPos.y, obj.pcEndPos.z),
                 spStartPos: new THREE.Vector3(obj.spStartPos.x, obj.spStartPos.y, obj.spStartPos.z),
                 spEndPos: new THREE.Vector3(obj.spEndPos.x, obj.spEndPos.y, obj.spEndPos.z),
-                uFilterTexture: filterTexture,
+                uFilterTexture: filterTexture.clone(),
                 uTexture: texture,
             })
-            
            this.meshes.push(mesh)
         })
     }

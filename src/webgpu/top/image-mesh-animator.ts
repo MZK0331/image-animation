@@ -19,7 +19,7 @@ export class ImageMeshAnimator {
         this.isAnimating = true
 
         this.meshController.meshes.forEach(mesh => {
-            this.common.scene.add(mesh)
+            this.common.scene.add(mesh.mesh)
         })
 
         let index = 0

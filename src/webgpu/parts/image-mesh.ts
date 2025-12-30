@@ -25,42 +25,48 @@ interface ImageMeshInitProps {
     delay: number
 }
 
-export class ImageMesh extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
+
+export class ImageMesh {
     private common: Common
     private props: ImageMeshInitProps
+    public mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicNodeMaterial>
 
 
     private timeline = gsap.timeline()
     private positionProgress: number = 0
-    private uniforms = {
+    private uniforms: {
+        uFilterTexture: THREE.Texture,
+        uTexture: THREE.Texture,
+        uMixProgress: THREE.TSL.ShaderNodeObject<THREE.UniformNode<number>>,
+        // uBlurStrength: uniform(1),
+        uOpacity: THREE.TSL.ShaderNodeObject<THREE.UniformNode<number>>
+    }
+
+    constructor(common: Common, props: ImageMeshInitProps) {
+        const geometry = new THREE.PlaneGeometry(props.width, props.height)
+        const material = new THREE.MeshBasicNodeMaterial()
+        
+        this.mesh = new THREE.Mesh(geometry, material)        
+        this.common = common
+        this.props = props
+
+        this.uniforms = {
         uFilterTexture: new THREE.Texture(),
         uTexture: new THREE.Texture(),
         uMixProgress: uniform(0),
         // uBlurStrength: uniform(1),
         uOpacity: uniform(1)
     }
-
-    constructor(common: Common, props: ImageMeshInitProps) {
-        const geometry = new THREE.PlaneGeometry(props.width, props.height)
-        const material = new THREE.MeshBasicMaterial()
-        
-        super(geometry, material)
-        
-        this.common = common
-        this.props = props
-
         this.uniforms.uFilterTexture = props.uFilterTexture
         this.uniforms.uTexture = props.uTexture
         
-        this.material.transparent = true
-        this.material.colorNode = Fn(() => {
-            const ft = texture(this.uniforms.uFilterTexture, uv())
-            const t = texture(this.uniforms.uTexture, uv())
-            
-            const mixt = mix(ft, t, this.uniforms.uMixProgress).rgb
-
-            return vec4(mixt, this.uniforms.uOpacity)
-        })()
+        this.mesh.material.transparent = true
+        this.mesh.material.colorNode = Fn(([ftTex, tex, mixP, opacity]: [THREE.Texture, THREE.Texture, number, number]) => {
+            const ft = texture(ftTex, uv())
+            const t = texture(tex, uv())
+            const mixt = mix(ft, t, mixP).rgb
+            return vec4(mixt, opacity)
+        })(this.uniforms.uFilterTexture, this.uniforms.uTexture, this.uniforms.uMixProgress, this.uniforms.uOpacity)
     }
     
     public updatePosition = () => {
@@ -87,7 +93,7 @@ export class ImageMesh extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMa
             this.positionProgress
         ) * ((viewWidth + viewHeight) * 0.5)
 
-        this.position.set(x, y, z)
+        this.mesh.position.set(x, y, z)
     }
 
     public updateSize = () => {
@@ -95,8 +101,8 @@ export class ImageMesh extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMa
         const scale = isSp ? this.props.spScale : this.props.pcScale
 
         const width = this.common.viewWidth * scale
-        const scaleValue = width / this.geometry.parameters.width
-        this.scale.set(scaleValue, scaleValue, 1)
+        const scaleValue = width / this.mesh.geometry.parameters.width
+        this.mesh.scale.set(scaleValue, scaleValue, 1)
     }
     
     public startLoopAnimation = () => {
@@ -108,6 +114,7 @@ export class ImageMesh extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMa
         this.timeline = gsap.timeline({
             repeat: -1,
             repeatDelay: this.props.delay,
+            delay: this.props.delay
         })
 
         this.timeline
