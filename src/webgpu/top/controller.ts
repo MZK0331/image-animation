@@ -6,6 +6,7 @@ import { ImageMeshAnimator } from "./image-mesh-animator";
 import { SceneBackground } from "./scene-bg";
 import { BlurPass } from '../postprocess/blur-pass';
 import { KawaseBlurPass } from '../postprocess/kawase-blur-pass';
+import { PolygonMesh } from '../parts/polygon-mesh';
 
 
 export class TopWebGPUController extends Basic {
@@ -14,6 +15,7 @@ export class TopWebGPUController extends Basic {
     public common: Common
     private sceneBg: SceneBackground
     private imageMeshAnimator: ImageMeshAnimator
+    private polygonMesh: PolygonMesh
     private blurPass: BlurPass
     private kawaseBlurPass: KawaseBlurPass
     
@@ -24,6 +26,7 @@ export class TopWebGPUController extends Basic {
         this.common = new Common(canvas)
         this.sceneBg = new SceneBackground(this.common)
         this.imageMeshAnimator = new ImageMeshAnimator(this.common)
+        this.polygonMesh = new PolygonMesh(this.common)
         this.blurPass = new BlurPass(this.common)
         this.kawaseBlurPass = new KawaseBlurPass(this.common)
 
@@ -45,6 +48,7 @@ export class TopWebGPUController extends Basic {
         this.eventFunctions.forEach(func => func())
         this.common.update()
         this.imageMeshAnimator.update()
+        this.polygonMesh.updatePolygon(performance.now() / 1000)
         this.eventFunctions.clear()
     }
     
