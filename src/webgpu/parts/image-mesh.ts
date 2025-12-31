@@ -73,27 +73,27 @@ export class ImageMesh {
         const isSp = window.innerWidth < spSize
         const startPos = isSp ? this.props.spStartPos : this.props.pcStartPos
         const endPos = isSp ? this.props.spEndPos : this.props.pcEndPos
-        const { viewWidth, viewHeight } = this.common
 
         const x = THREE.MathUtils.lerp(
             startPos.x,
             endPos.x,
             this.positionProgress
-        ) * viewWidth
+        )
 
         const y = THREE.MathUtils.lerp(
             startPos.y,
             endPos.y,
             this.positionProgress
-        ) * viewHeight
+        )
 
         const z = THREE.MathUtils.lerp(
             startPos.z,
             endPos.z,
             this.positionProgress
-        ) * ((viewWidth + viewHeight) * 0.5)
+        )
 
         this.mesh.position.set(x, y, z)
+        this.common.updateResponsivePosition(this.mesh.position)
     }
 
     public updateSize = () => {

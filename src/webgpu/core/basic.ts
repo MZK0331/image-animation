@@ -33,4 +33,8 @@ export class Basic {
     protected onMouseMove(e: MouseEvent) {
 
     }
+
+    protected onTouchMove(e: TouchEvent) {
+
+    }
 }

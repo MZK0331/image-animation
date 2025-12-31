@@ -28,9 +28,9 @@ export class Common {
         this.oCamera = new THREE.OrthographicCamera(
             -1, 1, 1, -1, 0.1, 2
         )
-        const viewSize = this.getViewSize(this.pCamera, 0)
-        this.viewWidth = viewSize.viewWidth
-        this.viewHeight = viewSize.viewHeight
+        this.viewWidth = 0
+        this.viewHeight = 0
+        this.updateViewSize()
         this.renderer = new THREE.WebGPURenderer({
             canvas: canvas,
             antialias: window.devicePixelRatio === 1.0,
@@ -64,7 +64,7 @@ export class Common {
         this.oCamera.lookAt(zeroVector)
     }
 
-    public getViewSize(camera: THREE.PerspectiveCamera, z=this.pCamera.position.z) {
+    private updateViewSize(camera=this.pCamera, z=0) {
         const vFov = THREE.MathUtils.degToRad(camera.fov)
         const _viewHeight = 2 * Math.tan(vFov / 2) * Math.abs(camera.position.z - z)
         const _viewWidth = _viewHeight * camera.aspect
@@ -72,9 +72,16 @@ export class Common {
         const viewWidth = Math.floor(_viewWidth * 10000) / 10000
         const viewHeight = Math.floor(_viewHeight * 10000) / 10000
 
-        return { viewWidth, viewHeight }
+        this.viewWidth = viewWidth
+        this.viewHeight = viewHeight
     }
 
+    public updateResponsivePosition(position: THREE.Vector3) {
+        position.x *= this.viewWidth
+        position.y *= this.viewHeight
+        position.z *= this.viewHeight
+    }
+    
     onResize(): void {
         this.width = window.innerWidth
         this.height = window.innerHeight
@@ -84,9 +91,7 @@ export class Common {
         this.pCamera.updateProjectionMatrix()
 
         this.renderer.setSize(this.width, this.height);
-        const viewSize = this.getViewSize(this.pCamera, 0)
-        this.viewWidth = viewSize.viewWidth
-        this.viewHeight = viewSize.viewHeight
+        this.updateViewSize()
     }
 
     update() {
@@ -95,5 +100,9 @@ export class Common {
 
     onMouseMove(e: MouseEvent): void {
         this.mouse.onMouseMove(e)
+    }
+
+    onTouchMove(e: TouchEvent): void {
+        this.mouse.onTouchMove(e)
     }
 }

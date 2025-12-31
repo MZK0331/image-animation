@@ -14,7 +14,7 @@ export class Mouse {
         this.diff = new THREE.Vector2()
     }
 
-    private setCoords(e: MouseEvent) {
+    private setCoords(e: MouseEvent | Touch) {
         this.coords.set(
             e.clientX / window.innerWidth * 2 - 1,
             - e.clientY / window.innerHeight * 2 + 1
@@ -28,5 +28,9 @@ export class Mouse {
 
     onMouseMove(e: MouseEvent): void {
         this.setCoords(e)
+    }
+
+    onTouchMove(e: TouchEvent): void {
+        this.setCoords(e.touches[0])
     }
 }
